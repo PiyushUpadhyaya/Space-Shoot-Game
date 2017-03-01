@@ -1,0 +1,284 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <title>Space Demo</title>
+    <link href="css/style.css" media="all" rel="stylesheet" type="text/css"/>
+      <script language="javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js" type="text/javascript"></script><script language="javascript" src="javascripts/jquery.hotkeys.js" type="text/javascript"></script>
+      <script language="javascript" src="javascripts/key_status.js" type="text/javascript"></script>
+      <script language="javascript" src="javascripts/util.js" type="text/javascript"></script>
+      <script language="javascript" src="javascripts/sprite.js" type="text/javascript"></script>
+      <script language="javascript" src="javascripts/sound.js" type="text/javascript"></script>
+	<script language="javascript" src="javascripts/util.js" type="text/javascript"></script>
+	<script language="javascript" src="javascripts/sprite.js" type="text/javascript"></script>
+	<script language="javascript" src="javascripts/sound.js" type="text/javascript"></script>
+  </head>
+
+    <body>
+
+        <h3>Space Fighter</h3>
+        <button type="success" style="width: 100px; height: 50px;">High Score<p id="HiScore"></p></button>
+        <button type="success" style="width: 100px; height: 50px;">Lives Left<p id="Lives_left"></p></button><hr>
+    <!--script src="functon.js"></script-->
+    <h4><p id="GameStatus"></p></h4>
+        <script>
+                var CANVAS_WIDTH = 600;//1300 550
+                var CANVAS_HEIGHT = 450;
+                var score = 0;var score_big = 0;
+                var enemy_out_of_sight = 0;
+                var FPS = 30;
+                var textX = 50;
+                var textY = 50;
+                var enemy_id = "";
+                /*jslint browser: true*/
+                /*global $, jQuery, alert*/
+                var canvasElement = $("<canvas width='" + CANVAS_WIDTH + "' height='" + CANVAS_HEIGHT + "'></canvas>");
+                var canvas = canvasElement.get(0).getContext("2d");
+                canvasElement.appendTo('body');
+
+                var player = {
+                    color : "#000000",
+                    x: 500,
+                    y: 500,
+                    width: 50,
+                    height: 50,
+                    draw: function () {
+                        "use strict";
+                        canvas.fillStyle = this.color;
+                        canvas.fillRect(this.x, this.y, this.width, this.height);
+                    }
+                };
+
+                var playerBullets = [];
+                function Bullet(I) {
+                    I.active = true;
+                    I.xSpeed = 0;
+                    I.ySpeed = -I.speed;
+                    I.width = 3;
+                    I.height = 2    ;
+                    I.color = "#FF0000";
+
+                    I.inBounds = function() {
+                        return I.x >= 0 && I.x <= CANVAS_WIDTH && I.y >= 0 && I.y <= CANVAS_HEIGHT;
+                    };
+
+                    I.draw = function() {
+                        canvas.fillStyle = this.color;
+                        canvas.fillRect(this.x, this.y, this.width, this.height);
+                    };
+
+                    I.update = function() {
+                      I.x = I.x + I.xSpeed;
+                      I.y = I.y + I.ySpeed;
+                      I.active = I.active && I.inBounds();
+                    };
+
+                    I.explode = function() {
+                        this.active = false;
+                    }
+                    return I;
+                }
+
+                enemies = [];
+                function Enemy(I) {
+                    I = I || {};
+                    I.active = true;
+                    I.pos = Math.floor(Math.random() * 299);
+                    I.color = "00FF00";
+                    I.x = CANVAS_WIDTH / 8 + Math.random() * CANVAS_WIDTH / 6;
+                    I.y = 0;
+                    I.xSpeed = 0;
+                    I.ySpeed = 2;
+                    I.width = 32;
+                    I.height = 32;
+                    I.inBounds = function() {
+                      if (I.y >= CANVAS_HEIGHT) {
+                        enemy_out_of_sight= enemy_out_of_sight + 1;
+                      }
+                      document.getElementById('Lives_left').innerHTML = 3-enemy_out_of_sight;
+                      if (score%1000 == 0 && score != 0) {
+                        I.width = 64;
+                        I.height = 32;
+                      }
+                        return I.x >= 0 && I.x <= CANVAS_WIDTH && I.y >= 0 && I.y <= CANVAS_HEIGHT;
+                    };
+
+                    if (score%1000 == 0 && score != 0) {
+                      I.sprite = Sprite("enemy_giant");
+                      enemy_id = 'big_one'
+                    }else {
+                        I.sprite = Sprite("enemy");
+                        enemy_id = 'small_one';
+                    }
+                    I.draw = function() {
+                        //canvas.fillStyle = this.color;
+                        //canvas.fillRect(this.x, this.y, this.width, this.height);
+                        this.sprite.draw(canvas, this.x, this.y);
+                    };
+
+                    I.update = function() {
+                      if (score == 0) {
+                      document.getElementById("HiScore").innerHTML = 0000;
+                      }
+                      var lower_speed = I.y + I.ySpeed;
+                      I.y = lower_speed;
+                      if(I.y<lower_speed+5) {
+                        I.y = lower_speed + score/1000;
+                    }
+                      if (enemy_out_of_sight>=3) {
+                          player.explode();
+                      }
+                      I.x = I.x + I.xSpeed;
+                    //  I.y = I.y + I.ySpeed +score/1000;
+                      I.xSpeed = Math.random()*5;
+                      I.pos = I.pos + 1;
+                      I.active = I.active && I.inBounds();
+                    };
+
+                    I.explode = function() {
+                        Sound.play("explosion");
+                        this.active = false;
+                    };
+
+                    return I;
+                }
+
+                setInterval(function () {
+                    "use strict";
+                    update();
+                    draw();
+                }, 1000 / FPS);
+
+                function update() {
+                    "use strict";
+
+                    if (keydown.left) {
+                        player.x = player.x - 10;
+                    }
+                    if(keydown.right) {
+                        player.x = player.x + 10;
+                    }
+                    if(keydown.up) {
+                        player.y = player.y - 5;
+                    }
+                    if(keydown.down) {
+                        player.y = player.y + 5;
+                    }
+                    if(keydown.space) {
+                        player.shoot();
+                    }
+
+                    player.x = player.x.clamp(0, CANVAS_WIDTH - player.width);
+                    player.y = player.y.clamp(0, CANVAS_HEIGHT - player.height);
+
+                    playerBullets.forEach(function(bullet) {
+                            bullet.update();
+                    });
+
+                    playerBullets = playerBullets.filter(function(bullet) {
+                       return bullet.active;
+                    });
+
+                    enemies.forEach(function(enemy) {
+                    enemy.update();
+                  });
+
+                  enemies = enemies.filter(function(enemy) {
+                    return enemy.active;
+                  });
+
+
+                collisionTester();
+
+                  if(Math.random() < 0.1 ) {
+                    enemies.push(Enemy());
+                  }
+                }
+
+
+            player.shoot =  function () {
+                 Sound.play("Shoot")   ;
+                 var bulletPosition = this.midpoint();
+                 playerBullets.push(Bullet({
+                    speed: 5,
+                    x: bulletPosition.x,
+                    y: bulletPosition.y,
+                }));
+            };
+
+            player.midpoint = function () {
+                    return {
+                        x: this.x + this.width/2,
+                        y: this.y + this.height/2,
+                    };
+            };
+
+            function draw() {
+                    "use strict";
+                    canvas.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                   // canvas.fillStyle = "#ccc"; // Set color to black
+
+                   // canvas.fillText("Woerking", 50, 50);
+                    player.draw();
+                    playerBullets.forEach(function(bullet) {
+                       bullet.draw();
+                    });
+                    enemies.forEach(function(enemy) {
+                    enemy.draw();
+                  });
+            }
+
+            function collision(obj1,obj2) {
+
+                    return (obj1.x < obj2.x + obj2.width) && (obj1.x + obj1.width > obj2.x) && (obj1.y < obj2.y + obj2.height) && (obj1.y + obj1.height > obj2.y);
+            }
+
+            function collisionTester() {
+
+                    playerBullets.forEach(function(bullet) {
+                       enemies.forEach(function(enemy) {
+
+                           if(collision(bullet,enemy)) {
+                               enemy.explode();
+                               bullet.active = false;
+                              if (enemy_id == "big_one") {
+                                score = score + 20;
+                              }else if (enemy_id == "small_one"){
+                                score = score + 10;
+                              }
+
+//                               document.write(score);
+                          document.getElementById("HiScore").innerHTML = score;
+                           }
+                       });
+
+                    });
+
+                    enemies.forEach(function(enemy) {
+                        if(collision(enemy, player)){
+                            enemy.explode();
+                            player.explode();
+                        }
+                    });
+            }
+            player.explode = function() {
+                Sound.play("explosion");
+                this.active = false;
+                document.getElementById("GameStatus").innerHTML= "Game Over!";
+
+                if(confirm("Game Over! Restart?") == true){
+                  window.location.reload();
+                }
+                else {
+                  window.location.reload();
+                }
+            };
+
+            player.sprite = Sprite("player");
+            player.draw = function() {
+                this.sprite.draw(canvas, this.x, this.y);
+            };
+
+        </script>
+
+  </body>
+</html>
